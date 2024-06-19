@@ -39,6 +39,7 @@ public:
         //调用成功时返回0，失败返回-1
         return sem_wait(&m_sem) == 0;   
     }
+    
     bool post()
     {
         //以原子操作方式将信号量加一
@@ -87,20 +88,51 @@ private:
 
 class cond
 {
-private:
-    /* data */
 public:
-    cond(/* args */);
-    ~cond();
+    cond()
+    {
+        if(pthread_cond_init(&m_cond,nullptr))
+        {
+            throw std::exception();
+        }
+    }
+
+    ~cond()
+    {
+        pthread_cond_destroy(&m_cond);
+    }
+
+    bool wait(pthread_mutex_t *m_mutex)
+    {
+        int ret = 0;
+        //这个函数相当于释放锁，线程睡眠
+        //然后等待其他线程进入，改变条件变量
+        //满足条件后，唤醒该线程，并获得互斥锁
+        ret = pthread_cond_wait(&m_cond,m_mutex); 
+        //成功返回0，失败返回errno错误码（全局的int整型）
+        return ret == 0;
+    }
+
+    bool timewait(pthread_mutex_t *m_mutex,struct timespec t)
+    {
+        int ret = 0;
+        //超时或有信号触发，线程唤醒
+        ret = pthread_cond_timedwait(&m_cond,m_mutex,&t); 
+        return ret == 0;
+    }
+
+    bool signal()
+    {
+        return pthread_cond_signal(&m_cond) == 0;
+    }
+
+    bool broadcast()
+    {
+        return pthread_cond_broadcast(&m_cond) == 0;
+    }
+
+private:
+    pthread_cond_t m_cond;
 };
-
-cond::cond(/* args */)
-{
-}
-
-cond::~cond()
-{
-}
-
 
 #endif
